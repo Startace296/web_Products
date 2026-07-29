@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
+}
+
+enum NotificationType {
+  NEW_COMMENT
+  NEW_REPLY
+  NEW_VOTE
+  SYSTEM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  avatarUrl    String?  @map("avatar_url")
+  bio          String?  @db.Text
+  role         Role     @default(USER)
+  isVerified   Boolean  @default(false) @map("is_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  reviews               Review[]
+  comments              Comment[]
+  votes                 Vote[]
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsSent     Notification[] @relation("NotificationActor")
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String   @db.Text
+  imageUrl    String?  @map("image_url")
+  brand       String?
+  category    String
+  // Denormalized aggregates — kept in sync by the review service on
+  // create/update/delete, not enforced by the database itself.
+  avgRating   Float    @default(0) @map("avg_rating")
+  reviewCount Int      @default(0) @map("review_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  reviews Review[]
+
+  @@index([category])
+  @@index([brand])
+  @@map("products")
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  title         String
+  content       String   @db.Text
+  rating        Int
+  userId        String   @map("user_id")
+  productId     String   @map("product_id")
+  // Denormalized, giữ đồng bộ bởi voteService mỗi khi vote thay đổi (cùng lý do với
+  // Product.avgRating/reviewCount) — cho phép ORDER BY điểm số mà không phải COUNT
+  // votes mỗi lần list.
+  upvoteCount   Int      @default(0) @map("upvote_count")
+  downvoteCount Int      @default(0) @map("downvote_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  votes         Vote[]
+  notifications Notification[]
+
+  @@index([productId, createdAt])
+  @@index([userId])
+  @@map("reviews")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  userId    String   @map("user_id")
+  reviewId  String   @map("review_id")
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review        Review         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  parent        Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[]      @relation("CommentReplies")
+  notifications Notification[]
+
+  @@index([reviewId])
+  @@index([parentId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  type      VoteType
+  userId    String   @map("user_id")
+  reviewId  String   @map("review_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
+  @@index([userId])
+  @@map("votes")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  message     String           @db.Text
+  isRead      Boolean          @default(false) @map("is_read")
+  recipientId String           @map("recipient_id")
+  actorId     String?          @map("actor_id")
+  reviewId    String?          @map("review_id")
+  commentId   String?          @map("comment_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient User     @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  review    Review?  @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, isRead, createdAt])
+  @@map("notifications")
+}
