@@ -1,7 +1,7 @@
 // Tầng: service — toggle vote (business logic) + đồng bộ upvoteCount/downvoteCount
 // trên Review. Không import Express.
 import type { Prisma, VoteType } from "@prisma/client";
-import { prisma } from "../config/prisma";
+import { runInTransaction } from "../config/prisma";
 import { voteRepository } from "../repositories/voteRepository";
 import { reviewRepository } from "../repositories/reviewRepository";
 import { notificationService } from "./notificationService";
@@ -28,7 +28,7 @@ const toggle = async (userId: string, reviewId: string, type: VoteType): Promise
     throw ApiError.notFound("Review not found");
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await runInTransaction(async (tx) => {
     const existing = await voteRepository.findByUserAndReview(userId, reviewId, tx);
 
     let vote: { type: VoteType } | null;

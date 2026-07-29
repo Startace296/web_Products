@@ -40,7 +40,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
-  const { accessToken } = await authService.refresh(req.cookies?.[REFRESH_COOKIE_NAME]);
+  // authService.refresh rotates the token (revokes the old one, issues a new one), so
+  // the cookie must be re-set here too — not just on register/login.
+  const { accessToken, refreshToken } = await authService.refresh(req.cookies?.[REFRESH_COOKIE_NAME]);
+  setRefreshCookie(res, refreshToken);
   res.status(200).json({ success: true, data: { accessToken } });
 });
 

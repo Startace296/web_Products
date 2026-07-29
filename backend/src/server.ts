@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { createApp } from "./app";
 import { initSocket } from "./sockets";
 import { env } from "./config/env";
-import { prisma } from "./config/prisma";
+import { disconnectPrisma } from "./config/prisma";
 
 const app = createApp();
 const httpServer = createServer(app);
@@ -17,7 +17,7 @@ const shutdown = (signal: string): void => {
   console.log(`[server] received ${signal}, shutting down gracefully...`);
 
   server.close(() => {
-    void prisma.$disconnect().finally(() => {
+    void disconnectPrisma().finally(() => {
       console.log("[server] shutdown complete");
       process.exit(0);
     });

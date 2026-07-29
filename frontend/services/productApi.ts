@@ -35,6 +35,7 @@ interface DetailEnvelope<T> {
 
 export interface ListProductsParams {
   category?: string;
+  search?: string;
   page?: number;
   limit?: number;
 }
