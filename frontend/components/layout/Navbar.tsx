@@ -37,6 +37,11 @@ export function Navbar() {
       <nav className="flex items-center gap-3 text-sm">
         {user ? (
           <>
+            {user.role === "ADMIN" && (
+              <Link href="/admin/products" className="text-muted-foreground hover:text-foreground">
+                Quản trị
+              </Link>
+            )}
             <CartLink />
             <NotificationBell />
             <Link href="/profile" className="text-muted-foreground hover:text-foreground">

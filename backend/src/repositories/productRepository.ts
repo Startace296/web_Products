@@ -84,6 +84,40 @@ const decrementStock = (productId: string, quantity: number, db: DbClient = pris
     .then((result) => result.count);
 };
 
+interface CreateProductInput {
+  name: string;
+  slug: string;
+  description: string;
+  imageUrl?: string;
+  brand?: string;
+  category: string;
+  price: number;
+  stock: number;
+}
+
+interface UpdateProductInput {
+  name?: string;
+  slug?: string;
+  description?: string;
+  imageUrl?: string;
+  brand?: string;
+  category?: string;
+  price?: number;
+  stock?: number;
+}
+
+const create = (input: CreateProductInput, db: DbClient = prisma): Promise<Product> => {
+  return db.product.create({ data: input });
+};
+
+const update = (id: string, input: UpdateProductInput, db: DbClient = prisma): Promise<Product> => {
+  return db.product.update({ where: { id }, data: input });
+};
+
+const remove = (id: string, db: DbClient = prisma): Promise<Product> => {
+  return db.product.delete({ where: { id } });
+};
+
 export const productRepository = {
   findMany,
   count,
@@ -91,4 +125,7 @@ export const productRepository = {
   findById,
   updateAggregates,
   decrementStock,
+  create,
+  update,
+  remove,
 };
