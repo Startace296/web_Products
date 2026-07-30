@@ -8,6 +8,8 @@ const products = [
     imageUrl: "https://images.example.com/products/iphone-16-pro.jpg",
     brand: "Apple",
     category: "Smartphone",
+    price: 29_990_000,
+    stock: 40,
   },
   {
     name: "Samsung Galaxy S25 Ultra",
@@ -16,6 +18,8 @@ const products = [
     imageUrl: "https://images.example.com/products/galaxy-s25-ultra.jpg",
     brand: "Samsung",
     category: "Smartphone",
+    price: 33_990_000,
+    stock: 35,
   },
   {
     name: 'MacBook Pro 14" M4',
@@ -24,6 +28,8 @@ const products = [
     imageUrl: "https://images.example.com/products/macbook-pro-14-m4.jpg",
     brand: "Apple",
     category: "Laptop",
+    price: 42_990_000,
+    stock: 15,
   },
   {
     name: "Dell XPS 15",
@@ -32,6 +38,8 @@ const products = [
     imageUrl: "https://images.example.com/products/dell-xps-15.jpg",
     brand: "Dell",
     category: "Laptop",
+    price: 45_990_000,
+    stock: 12,
   },
   {
     name: "Sony WH-1000XM6",
@@ -40,6 +48,8 @@ const products = [
     imageUrl: "https://images.example.com/products/sony-wh-1000xm6.jpg",
     brand: "Sony",
     category: "Audio",
+    price: 8_990_000,
+    stock: 60,
   },
 ];
 
@@ -47,7 +57,9 @@ async function main(): Promise<void> {
   for (const product of products) {
     await prisma.product.upsert({
       where: { slug: product.slug },
-      update: {},
+      // update thay vì {} : chạy lại seed trong lúc dev sẽ refresh giá/tồn kho —
+      // vô hại kể cả khi đã có Order thật, vì OrderItem đã tự snapshot giá riêng.
+      update: { price: product.price, stock: product.stock },
       create: product,
     });
   }

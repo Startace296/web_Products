@@ -6,9 +6,12 @@ import type { Prisma, Product } from "@prisma/client";
 // thể gộp cập nhật Product vào cùng transaction với Review (xem reviewService).
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
+export type ProductSortBy = "newest" | "reviewCount" | "rating";
+
 interface FindManyParams {
   category?: string;
   search?: string;
+  sortBy?: ProductSortBy;
   skip: number;
   take: number;
 }
@@ -30,10 +33,19 @@ const buildWhere = (category?: string, search?: string): Prisma.ProductWhereInpu
   return conditions.length > 0 ? { AND: conditions } : undefined;
 };
 
-const findMany = ({ category, search, skip, take }: FindManyParams, db: DbClient = prisma): Promise<Product[]> => {
+const ORDER_BY: Record<ProductSortBy, Prisma.ProductOrderByWithRelationInput> = {
+  newest: { createdAt: "desc" },
+  reviewCount: { reviewCount: "desc" },
+  rating: { avgRating: "desc" },
+};
+
+const findMany = (
+  { category, search, sortBy = "newest", skip, take }: FindManyParams,
+  db: DbClient = prisma
+): Promise<Product[]> => {
   return db.product.findMany({
     where: buildWhere(category, search),
-    orderBy: { createdAt: "desc" },
+    orderBy: ORDER_BY[sortBy],
     skip,
     take,
   });
@@ -59,10 +71,24 @@ const updateAggregates = (
   return db.product.update({ where: { id }, data });
 };
 
+// Trừ kho có điều kiện — guard `stock >= quantity` nằm NGAY trong WHERE của update,
+// nên MySQL thực hiện check-and-set nguyên tử trong 1 câu lệnh (không cần SELECT...FOR
+// UPDATE hay raw SQL). Trả về số dòng bị ảnh hưởng: 0 nghĩa là không đủ hàng — orderService
+// diễn giải giá trị này thành lỗi, repository không throw ApiError.
+const decrementStock = (productId: string, quantity: number, db: DbClient = prisma): Promise<number> => {
+  return db.product
+    .updateMany({
+      where: { id: productId, stock: { gte: quantity } },
+      data: { stock: { decrement: quantity } },
+    })
+    .then((result) => result.count);
+};
+
 export const productRepository = {
   findMany,
   count,
   findBySlug,
   findById,
   updateAggregates,
+  decrementStock,
 };

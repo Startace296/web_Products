@@ -9,6 +9,8 @@ export interface Product {
   imageUrl: string | null;
   brand: string | null;
   category: string;
+  price: number;
+  stock: number;
   avgRating: number;
   reviewCount: number;
   createdAt: string;
@@ -33,11 +35,14 @@ interface DetailEnvelope<T> {
   data: T;
 }
 
+export type ProductSortBy = "newest" | "reviewCount" | "rating";
+
 export interface ListProductsParams {
   category?: string;
   search?: string;
   page?: number;
   limit?: number;
+  sortBy?: ProductSortBy;
 }
 
 export interface ListProductsResult {

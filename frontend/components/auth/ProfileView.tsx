@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -113,6 +114,12 @@ export function ProfileView() {
           </Button>
           {avatarError && <p className="text-sm text-destructive">{avatarError}</p>}
         </div>
+
+        <Link href="/orders">
+          <Button variant="outline" className="w-full">
+            Đơn hàng của tôi
+          </Button>
+        </Link>
 
         <Button
           variant="outline"

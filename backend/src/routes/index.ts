@@ -6,6 +6,9 @@ import { voteRouter } from "./voteRoutes";
 import { commentRouter } from "./commentRoutes";
 import { notificationRouter } from "./notificationRoutes";
 import { userRouter } from "./userRoutes";
+import { cartRouter } from "./cartRoutes";
+import { orderRouter } from "./orderRoutes";
+import { paymentRouter } from "./paymentRoutes";
 
 export const router = Router();
 
@@ -20,3 +23,6 @@ router.use("/reviews", voteRouter);
 router.use("/comments", commentRouter);
 router.use("/notifications", notificationRouter);
 router.use("/users", userRouter);
+router.use("/cart", cartRouter);
+router.use("/orders", orderRouter);
+router.use("/payments/vnpay", paymentRouter);

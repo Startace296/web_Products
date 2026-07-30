@@ -15,11 +15,11 @@ interface PaginatedResult<T> {
 }
 
 const listProducts = async (query: ListProductsQuery): Promise<PaginatedResult<Product>> => {
-  const { category, search, page, limit } = query;
+  const { category, search, page, limit, sortBy } = query;
   const skip = (page - 1) * limit;
 
   const [items, total] = await Promise.all([
-    productRepository.findMany({ category, search, skip, take: limit }),
+    productRepository.findMany({ category, search, sortBy, skip, take: limit }),
     productRepository.count(category, search),
   ]);
 

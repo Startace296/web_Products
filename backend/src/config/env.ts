@@ -19,6 +19,14 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
   CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
   CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
+
+  VNPAY_TMN_CODE: z.string().min(1, "VNPAY_TMN_CODE is required"),
+  VNPAY_HASH_SECRET: z.string().min(1, "VNPAY_HASH_SECRET is required"),
+  VNPAY_URL: z.string().url().default("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
+  // URL của CHÍNH backend này (route /payments/vnpay/return) — VNPay redirect trình
+  // duyệt về đây trước để chữ ký được xác minh phía server, rồi mới redirect tiếp
+  // sang trang frontend (dùng CLIENT_URL có sẵn), không phải URL frontend.
+  VNPAY_RETURN_URL: z.string().url("VNPAY_RETURN_URL must be an absolute URL"),
 });
 
 const parsed = envSchema.safeParse(process.env);

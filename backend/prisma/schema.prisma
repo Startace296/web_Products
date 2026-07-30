@@ -24,6 +24,25 @@ enum NotificationType {
   SYSTEM
 }
 
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  SHIPPING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  VNPAY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -42,6 +61,8 @@ model User {
   notificationsReceived Notification[] @relation("NotificationRecipient")
   notificationsSent     Notification[] @relation("NotificationActor")
   refreshTokens         RefreshToken[]
+  cartItems             CartItem[]
+  orders                Order[]
 
   @@map("users")
 }
@@ -54,6 +75,13 @@ model Product {
   imageUrl    String?  @map("image_url")
   brand       String?
   category    String
+  // VND, whole-dong integer — no minor unit exists for VND, so no Decimal needed.
+  // Defaulted (not just required) so adding this column stays additive: existing
+  // seeded rows don't need a destructive migrate reset to satisfy a NOT NULL add.
+  price       Int      @default(0)
+  // Hard-blocks at 0 (no backorder) — checked/decremented atomically at order time,
+  // see productRepository.decrementStock.
+  stock       Int      @default(0)
   // Denormalized aggregates — kept in sync by the review service on
   // create/update/delete, not enforced by the database itself.
   avgRating   Float    @default(0) @map("avg_rating")
@@ -61,7 +89,9 @@ model Product {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  reviews Review[]
+  reviews    Review[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   @@index([category])
   @@index([brand])
@@ -166,4 +196,76 @@ model Notification {
 
   @@index([recipientId, isRead, createdAt])
   @@map("notifications")
+}
+
+// Không có model Cart riêng: "1 giỏ hàng / user" đã được diễn đạt đủ bằng
+// @@unique([userId, productId]) — thêm 1 bảng Cart header chỉ để giữ userId là thừa (YAGNI).
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  status        OrderStatus   @default(PENDING_PAYMENT)
+  paymentMethod PaymentMethod @map("payment_method")
+  paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
+  // VND, tổng đã snapshot tại thời điểm đặt hàng — không đổi theo Product.price sau này.
+  totalAmount   Int           @map("total_amount")
+
+  // Snapshot thông tin giao hàng ngay trên Order — không tách model Address riêng
+  // (checkout 1 lần/order, không có khái niệm "sổ địa chỉ" — YAGNI).
+  recipientName   String  @map("recipient_name")
+  recipientPhone  String  @map("recipient_phone")
+  shippingAddress String  @db.Text @map("shipping_address")
+  note            String? @db.Text
+
+  // VNPay bookkeeping. vnpTxnRef là mã tham chiếu của LẦN THỬ THANH TOÁN HIỆN TẠI —
+  // retry sau khi thanh toán thất bại ghi đè giá trị này (không tạo Order mới), vì
+  // Order đã đại diện đúng ý định mua hàng (đã chốt giá, đã chốt địa chỉ giao).
+  vnpTxnRef       String?   @unique @map("vnp_txn_ref")
+  paymentAttempts Int       @default(0) @map("payment_attempts")
+  paidAt          DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@index([userId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String @map("order_id")
+  // Nullable + onDelete: SetNull — order lịch sử vẫn còn đủ thông tin (đã snapshot
+  // bên dưới) kể cả khi Product gốc bị xoá sau này.
+  productId String? @map("product_id")
+  // Snapshot tại thời điểm mua — cùng triết lý denormalize như Product.avgRating/
+  // Review.upvoteCount: giá/tên Product có thể đổi sau, đơn hàng cũ không được đổi theo.
+  productName String  @map("product_name")
+  price       Int
+  quantity    Int
+  imageUrl    String? @map("image_url")
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
 }

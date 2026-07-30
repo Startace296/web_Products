@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { productApi } from "@/services/productApi";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard } from "./ProductCard";
-import { ProductCategoryFilter } from "./ProductCategoryFilter";
-import { ProductSearchInput } from "./ProductSearchInput";
 
-export function ProductList() {
-  const [category, setCategory] = useState<string | undefined>(undefined);
-  const [search, setSearch] = useState("");
-  // Debounce only the value used for the query key/request — the input itself stays
-  // controlled by the raw, un-debounced `search` state so typing feels instant.
+interface ProductListProps {
+  // Điều khiển từ ProductHero / CategorySidebar (HomePage) — mặc định rỗng để component
+  // vẫn dùng được độc lập.
+  search?: string;
+  category?: string;
+}
+
+export function ProductList({ search = "", category }: ProductListProps) {
+  // Debounce only the value used for the query key/request — the raw value comes from
+  // the parent-controlled `search` prop (typed into ProductHero) so typing feels instant.
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const { data, isLoading, isError } = useQuery({
@@ -21,15 +23,11 @@ export function ProductList() {
     queryFn: () => productApi.list({ category, search: debouncedSearch || undefined }),
   });
 
+  const title = debouncedSearch ? `Kết quả cho "${debouncedSearch}"` : category ? `Danh mục: ${category}` : "Sản phẩm";
+
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-6 p-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold">Sản phẩm</h1>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <ProductSearchInput value={search} onChange={setSearch} />
-          <ProductCategoryFilter value={category} onChange={setCategory} />
-        </div>
-      </div>
+    <div className="flex w-full flex-col gap-6">
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       {isLoading && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

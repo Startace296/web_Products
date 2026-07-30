@@ -42,3 +42,11 @@ export const uploadLimiter = createRateLimiter(
   10,
   "Too many uploads. Please try again later."
 );
+
+// Đặt hàng là write-action như review/comment, nhưng còn có thể gọi ra cổng thanh toán
+// ngoài (VNPay) — tách giới hạn riêng thay vì dùng chung writeActionLimiter.
+export const orderLimiter = createRateLimiter(
+  15 * 60 * 1000,
+  20,
+  "Too many order attempts. Please slow down and try again later."
+);

@@ -1,11 +1,7 @@
 "use client";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Backend chưa có endpoint liệt kê category riêng (bước 4 chỉ hỗ trợ filter theo
-// category có sẵn) — hardcode tạm theo dữ liệu seed, cần đổi sang gọi API nếu category
-// trở nên động/nhiều hơn.
-const CATEGORIES = ["Smartphone", "Laptop", "Audio"];
+import { PRODUCT_CATEGORIES } from "@/lib/productCategories";
 
 interface ProductCategoryFilterProps {
   value: string | undefined;
@@ -25,7 +21,7 @@ export function ProductCategoryFilter({ value, onChange }: ProductCategoryFilter
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">Tất cả danh mục</SelectItem>
-        {CATEGORIES.map((category) => (
+        {PRODUCT_CATEGORIES.map((category) => (
           <SelectItem key={category} value={category}>
             {category}
           </SelectItem>

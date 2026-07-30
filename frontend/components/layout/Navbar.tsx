@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification/NotificationBell";
+import { CartLink } from "@/components/cart/CartLink";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { authApi } from "@/services/authApi";
@@ -36,6 +37,7 @@ export function Navbar() {
       <nav className="flex items-center gap-3 text-sm">
         {user ? (
           <>
+            <CartLink />
             <NotificationBell />
             <Link href="/profile" className="text-muted-foreground hover:text-foreground">
               {user.name}
