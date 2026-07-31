@@ -84,6 +84,11 @@ const decrementStock = (productId: string, quantity: number, db: DbClient = pris
     .then((result) => result.count);
 };
 
+export interface ProductSpecificationInput {
+  label: string;
+  value: string;
+}
+
 interface CreateProductInput {
   name: string;
   slug: string;
@@ -92,7 +97,9 @@ interface CreateProductInput {
   brand?: string;
   category: string;
   price: number;
+  originalPrice?: number;
   stock: number;
+  specifications?: ProductSpecificationInput[];
 }
 
 interface UpdateProductInput {
@@ -103,15 +110,21 @@ interface UpdateProductInput {
   brand?: string;
   category?: string;
   price?: number;
+  originalPrice?: number | null;
   stock?: number;
+  specifications?: ProductSpecificationInput[];
 }
 
+// Prisma's Json input type wants an index-signature object/array (Prisma.InputJsonValue),
+// which ProductSpecificationInput[] (concrete keys, no index signature) doesn't
+// structurally satisfy even though every value is plain JSON — cast at the one place
+// that touches Prisma, not on the domain-facing interfaces above.
 const create = (input: CreateProductInput, db: DbClient = prisma): Promise<Product> => {
-  return db.product.create({ data: input });
+  return db.product.create({ data: input as Prisma.ProductCreateInput });
 };
 
 const update = (id: string, input: UpdateProductInput, db: DbClient = prisma): Promise<Product> => {
-  return db.product.update({ where: { id }, data: input });
+  return db.product.update({ where: { id }, data: input as Prisma.ProductUpdateInput });
 };
 
 const remove = (id: string, db: DbClient = prisma): Promise<Product> => {

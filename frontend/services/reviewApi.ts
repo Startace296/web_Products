@@ -36,6 +36,18 @@ interface ListEnvelope<T> {
   pagination: Pagination;
 }
 
+interface DetailEnvelope<T> {
+  success: boolean;
+  data: T;
+}
+
+export interface CreateReviewPayload {
+  productId: string;
+  title: string;
+  content: string;
+  rating: number;
+}
+
 export interface ListReviewsParams {
   productId: string;
   page?: number;
@@ -52,5 +64,10 @@ export const reviewApi = {
   list: async (params: ListReviewsParams): Promise<ListReviewsResult> => {
     const { data } = await api.get<ListEnvelope<Review>>("/reviews", { params });
     return { items: data.data, pagination: data.pagination };
+  },
+
+  create: async (payload: CreateReviewPayload): Promise<Review> => {
+    const { data } = await api.post<DetailEnvelope<Review>>("/reviews", payload);
+    return data.data;
   },
 };

@@ -55,18 +55,29 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Xanh dương (~#5b6cff) — nút chính/header/link. Hex gốc (L=0.60) để chữ TRẮNG lên
+  trên chỉ đạt 4.02:1 (fail chuẩn chữ thường 4.5:1) — hạ L xuống 0.55 (~#4e5bed, vẫn
+  cùng tông/hue 273) để đạt 4.98:1, giữ đúng vai trò "nút đặc + chữ trắng" thông thường. */
+  --primary: oklch(0.55 0.217 273);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Cam (~#ff7a45) — nút mua/điểm nhấn. Giữ nguyên đúng hex gốc: chữ đen lên trên đã
+  đạt 7.5+:1 (cam sáng luôn cần chữ TỐI, chữ trắng chỉ ~2.5:1, fail hẳn). */
+  --accent: oklch(0.73 0.176 41.2);
+  --accent-foreground: oklch(0.145 0 0);
+  /* Đỏ (~#e24b4a) — giá sale/nhãn Hot, dùng làm MÀU CHỮ (badge.tsx/button.tsx build
+  variant destructive kiểu bg-destructive/10 text-destructive, không phải nền đặc — xem
+  ProductCard.tsx). Hex gốc (L=0.62) làm chữ trên nền trắng chỉ 3.82:1 (fail 4.5:1) —
+  hạ L xuống 0.55 (~#c92f33, cùng hue 25) để đạt 5.12:1. */
+  --destructive: oklch(0.55 0.19 25);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Ring theo tông primary thay vì xám trung tính — focus ring khớp màu thương hiệu.
+  3.88:1 với nền trắng, đạt chuẩn non-text contrast (>=3:1, WCAG 1.4.11) cho viền UI. */
+  --ring: oklch(0.6 0.19 260);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -90,18 +101,25 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  /* Xanh dương sáng hơn cho nền tối (~#7a91ff, cùng hue 273 với light mode) — giữ đúng
+  pattern gốc: dark mode primary luôn SÁNG + chữ TỐI, ngược light mode. Chữ trắng trên
+  primary dark chỉ ~2.9:1 (fail) — --primary-foreground phải gần đen, đạt 6.87:1. */
+  --primary: oklch(0.7 0.19 273);
+  --primary-foreground: oklch(0.145 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* Cùng lý do accent light: cam luôn cần chữ tối dù ở theme nào. Giữ nguyên hex gốc
+  ~#ff7a45, chỉ nhích sáng hơn 1 chút cho nổi trên nền tối — vẫn 8+:1. */
+  --accent: oklch(0.76 0.17 41.2);
+  --accent-foreground: oklch(0.145 0 0);
+  /* Đỏ (~#e24b4a) sáng hơn cho dễ đọc trên nền tối, cùng hue 25 với light mode — làm chữ
+  trên --background/--card: 5.62:1 / 5.09:1. */
+  --destructive: oklch(0.65 0.18 25);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.65 0.18 260);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

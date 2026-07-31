@@ -50,3 +50,10 @@ export const orderLimiter = createRateLimiter(
   20,
   "Too many order attempts. Please slow down and try again later."
 );
+
+// Endpoint public, không yêu cầu đăng nhập — cần chặn spam riêng như register.
+export const newsletterLimiter = createRateLimiter(
+  60 * 60 * 1000,
+  8,
+  "Too many attempts. Please try again later."
+);

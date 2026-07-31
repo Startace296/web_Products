@@ -79,9 +79,17 @@ model Product {
   // Defaulted (not just required) so adding this column stays additive: existing
   // seeded rows don't need a destructive migrate reset to satisfy a NOT NULL add.
   price       Int      @default(0)
+  // Giá niêm yết trước giảm — optional (NULL nghĩa là không giảm giá). Chỉ hiện badge
+  // %/giá gạch ngang ở ProductCard khi originalPrice > price (xem productService).
+  originalPrice Int?   @map("original_price")
   // Hard-blocks at 0 (no backorder) — checked/decremented atomically at order time,
   // see productRepository.decrementStock.
   stock       Int      @default(0)
+  // Mảng { label, value } có thứ tự hiển thị (không phải object key-value) — khác
+  // category/brand nên không cố định field cứng: Smartphone cần "Chip"/"RAM", Audio cần
+  // "Chuẩn kết nối"... admin tự đặt tên thông số phù hợp từng sản phẩm (xem
+  // AdminProductForm.tsx). NULL/[] đều hợp lệ — ProductDetail chỉ hiện bảng khi có dữ liệu.
+  specifications Json?
   // Denormalized aggregates — kept in sync by the review service on
   // create/update/delete, not enforced by the database itself.
   avgRating   Float    @default(0) @map("avg_rating")
@@ -196,6 +204,17 @@ model Notification {
 
   @@index([recipientId, isRead, createdAt])
   @@map("notifications")
+}
+
+// Đăng ký nhận tin khuyến mãi (popup trang chủ) — KHÔNG liên kết User: khách chưa có
+// tài khoản vẫn để lại email được, và 1 User cũng không bắt buộc phải đăng ký nhận tin.
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("newsletter_subscribers")
 }
 
 // Không có model Cart riêng: "1 giỏ hàng / user" đã được diễn đạt đủ bằng

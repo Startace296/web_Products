@@ -1,6 +1,11 @@
 // Tầng: service — component chỉ được gọi API product qua đây, không import lib/axios trực tiếp.
 import { api } from "@/lib/axios";
 
+export interface ProductSpecification {
+  label: string;
+  value: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -10,7 +15,14 @@ export interface Product {
   brand: string | null;
   category: string;
   price: number;
+  // NULL = không giảm giá. Chỉ hiện badge %/giá gạch ngang khi originalPrice > price
+  // (xem ProductCard.tsx) — badge vẫn hoạt động đúng ngay cả khi backend trả dữ liệu
+  // "vô lý" (originalPrice <= price) do defensive check ở phía hiển thị.
+  originalPrice: number | null;
   stock: number;
+  // Mảng có thứ tự (không phải object key-value) — xem lý do đầy đủ ở
+  // backend/prisma/schema.prisma Product.specifications. NULL/[] đều nghĩa là "chưa có".
+  specifications: ProductSpecification[] | null;
   avgRating: number;
   reviewCount: number;
   createdAt: string;
@@ -60,10 +72,16 @@ export interface CreateProductInput {
   brand?: string;
   category: string;
   price: number;
+  originalPrice?: number;
   stock: number;
+  specifications?: ProductSpecification[];
 }
 
-export type UpdateProductInput = Partial<CreateProductInput>;
+// originalPrice tách riêng khỏi Partial<CreateProductInput>: null có nghĩa "xoá giảm
+// giá hiện có", khác với undefined ("không đổi") — Partial<> chỉ cho ra number|undefined.
+export type UpdateProductInput = Partial<Omit<CreateProductInput, "originalPrice">> & {
+  originalPrice?: number | null;
+};
 
 export const productApi = {
   list: async (params: ListProductsParams = {}): Promise<ListProductsResult> => {

@@ -5,15 +5,16 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import Link from "next/link";
+import { BanknoteIcon, CreditCardIcon, MapPinIcon, PhoneIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cartApi } from "@/services/cartApi";
 import { orderApi, type PaymentMethod } from "@/services/orderApi";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { cn } from "@/lib/utils";
 
 const priceFormatter = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" });
 
@@ -27,6 +28,11 @@ const checkoutSchema = z.object({
 });
 
 type FieldErrors = Partial<Record<"recipientName" | "recipientPhone" | "shippingAddress" | "note", string>>;
+
+const PAYMENT_OPTIONS: { value: PaymentMethod; icon: typeof BanknoteIcon; title: string; subtitle: string }[] = [
+  { value: "COD", icon: BanknoteIcon, title: "Thanh toán khi nhận hàng", subtitle: "Trả tiền mặt (COD)" },
+  { value: "VNPAY", icon: CreditCardIcon, title: "VNPay", subtitle: "Thẻ ATM/Visa/Master, QR" },
+];
 
 export function CheckoutForm() {
   const router = useRouter();
@@ -88,7 +94,7 @@ export function CheckoutForm() {
 
   if (isCartLoading) {
     return (
-      <div className="flex w-full max-w-2xl flex-col gap-4 p-8">
+      <div className="flex w-full max-w-4xl flex-col gap-4 p-8">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -97,8 +103,8 @@ export function CheckoutForm() {
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="flex w-full max-w-2xl flex-col gap-4 p-8">
-        <h1 className="text-xl font-semibold">Thanh toán</h1>
+      <div className="flex w-full max-w-4xl flex-col gap-4 p-8">
+        <h1 className="text-2xl font-bold">Thanh toán</h1>
         <p className="text-sm text-muted-foreground">
           Giỏ hàng trống.{" "}
           <Link href="/" className="text-primary underline underline-offset-4">
@@ -110,102 +116,137 @@ export function CheckoutForm() {
   }
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-6 p-8">
-      <h1 className="text-xl font-semibold">Thanh toán</h1>
+    <div className="flex w-full max-w-4xl flex-col gap-6 p-8">
+      <h1 className="text-2xl font-bold">Thanh toán</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Đơn hàng ({cart.totalItems} sản phẩm)</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {cart.items.map((item) => (
-            <div key={item.productId} className="flex items-center justify-between text-sm">
-              <span>
-                {item.name} × {item.quantity}
-              </span>
-              <span className="text-muted-foreground">{priceFormatter.format(item.subtotal)}</span>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+        <form id="checkout-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="recipientName">Người nhận</Label>
+            <div className="relative">
+              <UserIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="recipientName"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                aria-invalid={!!fieldErrors.recipientName}
+                autoComplete="name"
+                className="h-11 rounded-xl pl-10"
+              />
             </div>
-          ))}
-          <div className="mt-2 flex items-center justify-between border-t pt-2 font-semibold">
-            <span>Tổng cộng</span>
-            <span>{priceFormatter.format(cart.totalAmount)}</span>
+            {fieldErrors.recipientName && <p className="text-sm text-destructive">{fieldErrors.recipientName}</p>}
           </div>
-        </CardContent>
-      </Card>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="recipientName">Người nhận</Label>
-          <Input
-            id="recipientName"
-            value={recipientName}
-            onChange={(e) => setRecipientName(e.target.value)}
-            aria-invalid={!!fieldErrors.recipientName}
-            autoComplete="name"
-          />
-          {fieldErrors.recipientName && <p className="text-sm text-destructive">{fieldErrors.recipientName}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="recipientPhone">Số điện thoại</Label>
-          <Input
-            id="recipientPhone"
-            value={recipientPhone}
-            onChange={(e) => setRecipientPhone(e.target.value)}
-            aria-invalid={!!fieldErrors.recipientPhone}
-            autoComplete="tel"
-            placeholder="0912345678"
-          />
-          {fieldErrors.recipientPhone && <p className="text-sm text-destructive">{fieldErrors.recipientPhone}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="shippingAddress">Địa chỉ giao hàng</Label>
-          <Textarea
-            id="shippingAddress"
-            value={shippingAddress}
-            onChange={(e) => setShippingAddress(e.target.value)}
-            aria-invalid={!!fieldErrors.shippingAddress}
-            autoComplete="street-address"
-            rows={3}
-          />
-          {fieldErrors.shippingAddress && <p className="text-sm text-destructive">{fieldErrors.shippingAddress}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="note">Ghi chú (tuỳ chọn)</Label>
-          <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
-          {fieldErrors.note && <p className="text-sm text-destructive">{fieldErrors.note}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label>Phương thức thanh toán</Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={paymentMethod === "COD" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => setPaymentMethod("COD")}
-            >
-              Thanh toán khi nhận hàng (COD)
-            </Button>
-            <Button
-              type="button"
-              variant={paymentMethod === "VNPAY" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => setPaymentMethod("VNPAY")}
-            >
-              VNPay
-            </Button>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="recipientPhone">Số điện thoại</Label>
+            <div className="relative">
+              <PhoneIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="recipientPhone"
+                value={recipientPhone}
+                onChange={(e) => setRecipientPhone(e.target.value)}
+                aria-invalid={!!fieldErrors.recipientPhone}
+                autoComplete="tel"
+                placeholder="0912345678"
+                className="h-11 rounded-xl pl-10"
+              />
+            </div>
+            {fieldErrors.recipientPhone && <p className="text-sm text-destructive">{fieldErrors.recipientPhone}</p>}
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="shippingAddress">Địa chỉ giao hàng</Label>
+            <div className="relative">
+              <MapPinIcon className="pointer-events-none absolute top-3 left-3.5 size-4 text-muted-foreground" />
+              <Textarea
+                id="shippingAddress"
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                aria-invalid={!!fieldErrors.shippingAddress}
+                autoComplete="street-address"
+                rows={3}
+                className="rounded-xl pl-10"
+              />
+            </div>
+            {fieldErrors.shippingAddress && <p className="text-sm text-destructive">{fieldErrors.shippingAddress}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="note">Ghi chú (tuỳ chọn)</Label>
+            <Textarea
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              className="rounded-xl"
+            />
+            {fieldErrors.note && <p className="text-sm text-destructive">{fieldErrors.note}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Phương thức thanh toán</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {PAYMENT_OPTIONS.map(({ value, icon: Icon, title, subtitle }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPaymentMethod(value)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border p-3 text-left transition-colors",
+                    paymentMethod === value
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-full",
+                      paymentMethod === value ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{title}</p>
+                    <p className="text-xs text-muted-foreground">{subtitle}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
+        </form>
+
+        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 lg:sticky lg:top-6">
+          <h2 className="font-semibold">Đơn hàng ({cart.totalItems} sản phẩm)</h2>
+
+          <div className="flex flex-col gap-2">
+            {cart.items.map((item) => (
+              <div key={item.productId} className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-muted-foreground">
+                  {item.name} <span className="tabular-nums">× {item.quantity}</span>
+                </span>
+                <span className="shrink-0 font-medium tabular-nums">{priceFormatter.format(item.subtotal)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border pt-3">
+            <span className="font-medium">Tổng cộng</span>
+            <span className="text-lg font-bold text-destructive">{priceFormatter.format(cart.totalAmount)}</span>
+          </div>
+
+          <Button
+            type="submit"
+            form="checkout-form"
+            disabled={createOrderMutation.isPending}
+            className="h-11 w-full rounded-xl bg-accent text-base text-accent-foreground hover:bg-accent/90"
+          >
+            {createOrderMutation.isPending ? "Đang xử lý..." : "Đặt hàng"}
+          </Button>
         </div>
-
-        {formError && <p className="text-sm text-destructive">{formError}</p>}
-
-        <Button type="submit" disabled={createOrderMutation.isPending} className="w-full">
-          {createOrderMutation.isPending ? "Đang xử lý..." : "Đặt hàng"}
-        </Button>
-      </form>
+      </div>
     </div>
   );
 }

@@ -58,6 +58,16 @@ const updateProduct = async (id: string, input: UpdateProductInput): Promise<Pro
     }
   }
 
+  // Zod (updateProductSchema) chỉ validate được các field THỰC SỰ gửi lên trong payload
+  // này — không biết state hiện có trong DB. Nếu admin chỉ sửa 1 trong 2 field
+  // (price hoặc originalPrice), phải tự ráp giá trị hiệu lực SAU KHI merge với dữ liệu
+  // cũ để so sánh, tránh lọt trạng thái vô lý (originalPrice <= price).
+  const effectivePrice = input.price ?? existing.price;
+  const effectiveOriginalPrice = input.originalPrice === undefined ? existing.originalPrice : input.originalPrice;
+  if (effectiveOriginalPrice !== null && effectiveOriginalPrice <= effectivePrice) {
+    throw ApiError.badRequest("Original price must be greater than price");
+  }
+
   return productRepository.update(id, input);
 };
 

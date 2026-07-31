@@ -4,10 +4,10 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { BadgeCheckIcon, CalendarIcon, CameraIcon, ChevronRightIcon, LogOutIcon, PackageIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { authApi } from "@/services/authApi";
 import { userApi } from "@/services/userApi";
 import { getErrorMessage } from "@/lib/getErrorMessage";
@@ -18,6 +18,8 @@ import { useNotificationStore } from "@/store/notificationStore";
 // instead of waiting for a round-trip — the backend remains the real enforcement point.
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+
+const joinedDateFormatter = new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" });
 
 export function ProfileView() {
   const router = useRouter();
@@ -71,63 +73,88 @@ export function ProfileView() {
   if (!user) return null;
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="flex flex-row items-center gap-4">
-        <Avatar className="size-14">
-          <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
-          <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div>
-          <CardTitle>{user.name}</CardTitle>
+    // Card kính mờ (glassmorphism) ngồi trên quầng sáng của page wrapper (xem
+    // app/profile/page.tsx). [--card-spacing:0px] triệt tiêu padding mặc định của Card
+    // (xem components/ui/card.tsx) để dải banner phía trên tràn sát viền, phần nội dung
+    // bên dưới tự khai padding riêng qua CardContent.
+    <Card className="relative w-full max-w-md overflow-hidden border border-border/60 bg-card/80 shadow-2xl shadow-black/30 backdrop-blur-xl [--card-spacing:0px]">
+      <div className="relative h-28 overflow-hidden bg-gradient-to-br from-primary/25 via-card to-accent/20">
+        <div className="pointer-events-none absolute -top-10 -left-6 size-32 rounded-full bg-primary/30 blur-2xl" />
+        <div className="pointer-events-none absolute -right-8 -bottom-10 size-32 rounded-full bg-accent/30 blur-2xl" />
+      </div>
+
+      <CardContent className="flex flex-col gap-5 px-6 pt-0 pb-6">
+        <div className="-mt-12 flex items-end justify-between">
+          <div className="relative w-fit">
+            <Avatar className="size-24 ring-4 ring-card">
+              <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
+              <AvatarFallback className="text-2xl">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ALLOWED_AVATAR_TYPES.join(",")}
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadAvatarMutation.isPending}
+              aria-label="Đổi ảnh đại diện"
+              className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-card transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+            >
+              <CameraIcon className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <CardTitle className="text-xl font-bold text-foreground">{user.name}</CardTitle>
           <p className="text-sm text-muted-foreground">{user.email}</p>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{user.role}</Badge>
-          {user.isVerified ? (
-            <Badge variant="secondary">Đã xác thực</Badge>
-          ) : (
-            <Badge variant="outline">Chưa xác thực email</Badge>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{user.role === "ADMIN" ? "Quản trị viên" : "Thành viên"}</Badge>
+            {user.isVerified ? (
+              <Badge variant="secondary" className="gap-1">
+                <BadgeCheckIcon className="size-3" />
+                Đã xác thực
+              </Badge>
+            ) : (
+              <Badge variant="outline">Chưa xác thực email</Badge>
+            )}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarIcon className="size-3" />
+              Tham gia {joinedDateFormatter.format(new Date(user.createdAt))}
+            </span>
+          </div>
         </div>
 
-        {user.bio && <p className="text-sm">{user.bio}</p>}
+        {avatarError && <p className="text-sm text-destructive">{avatarError}</p>}
 
-        <div className="flex flex-col gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ALLOWED_AVATAR_TYPES.join(",")}
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-fit"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadAvatarMutation.isPending}
+        {user.bio && <p className="rounded-xl bg-muted/50 p-3 text-sm text-foreground">{user.bio}</p>}
+
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <Link
+            href="/orders"
+            className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm font-medium transition-colors hover:border-primary hover:bg-muted/50"
           >
-            {uploadAvatarMutation.isPending ? "Đang tải lên..." : "Đổi ảnh đại diện"}
-          </Button>
-          {avatarError && <p className="text-sm text-destructive">{avatarError}</p>}
+            <span className="flex items-center gap-2">
+              <PackageIcon className="size-4 text-primary" />
+              Đơn hàng của tôi
+            </span>
+            <ChevronRightIcon className="size-4 text-muted-foreground" />
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-medium text-destructive transition-colors hover:border-destructive hover:bg-destructive/5 disabled:pointer-events-none disabled:opacity-50"
+          >
+            <LogOutIcon className="size-4" />
+            {logoutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
+          </button>
         </div>
-
-        <Link href="/orders">
-          <Button variant="outline" className="w-full">
-            Đơn hàng của tôi
-          </Button>
-        </Link>
-
-        <Button
-          variant="outline"
-          onClick={() => logoutMutation.mutate()}
-          disabled={logoutMutation.isPending}
-        >
-          {logoutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
-        </Button>
       </CardContent>
     </Card>
   );

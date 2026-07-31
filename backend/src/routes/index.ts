@@ -9,6 +9,7 @@ import { userRouter } from "./userRoutes";
 import { cartRouter } from "./cartRoutes";
 import { orderRouter } from "./orderRoutes";
 import { paymentRouter } from "./paymentRoutes";
+import { newsletterRouter } from "./newsletterRoutes";
 
 export const router = Router();
 
@@ -26,3 +27,4 @@ router.use("/users", userRouter);
 router.use("/cart", cartRouter);
 router.use("/orders", orderRouter);
 router.use("/payments/vnpay", paymentRouter);
+router.use("/newsletter", newsletterRouter);

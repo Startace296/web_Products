@@ -13,7 +13,9 @@ const SORT_OPTIONS: { value: ReviewSortBy; label: string }[] = [
   { value: "score", label: "Điểm cao nhất" },
 ];
 
-// Chỉ hiển thị danh sách review — form viết review mới chưa nằm trong phạm vi bước này.
+// Chỉ hiển thị danh sách review — form viết review mới nằm ở ReviewForm.tsx (đứng trên
+// component này trong ProductDetail.tsx), tách riêng vì 2 khối có vòng đời khác nhau
+// (form không cần refetch theo page/sortBy).
 export function ReviewList({ productId }: { productId: string }) {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<ReviewSortBy>("newest");

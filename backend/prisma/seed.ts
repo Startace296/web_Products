@@ -9,6 +9,7 @@ const products = [
     brand: "Apple",
     category: "Smartphone",
     price: 29_990_000,
+    originalPrice: 32_990_000,
     stock: 40,
   },
   {
@@ -29,6 +30,7 @@ const products = [
     brand: "Apple",
     category: "Laptop",
     price: 42_990_000,
+    originalPrice: 45_990_000,
     stock: 15,
   },
   {
@@ -49,6 +51,7 @@ const products = [
     brand: "Sony",
     category: "Audio",
     price: 8_990_000,
+    originalPrice: 9_990_000,
     stock: 60,
   },
 ];
@@ -59,7 +62,14 @@ async function main(): Promise<void> {
       where: { slug: product.slug },
       // update thay vì {} : chạy lại seed trong lúc dev sẽ refresh giá/tồn kho —
       // vô hại kể cả khi đã có Order thật, vì OrderItem đã tự snapshot giá riêng.
-      update: { price: product.price, stock: product.stock },
+      // originalPrice không có trong 2/5 sản phẩm (Samsung, Dell) — Prisma cần giá trị
+      // tường minh null để XOÁ giảm giá cũ nếu seed chạy lại sau khi seed trước đó/admin
+      // đã set originalPrice cho sản phẩm đó, không phải omit field (omit = "không đổi").
+      update: {
+        price: product.price,
+        originalPrice: "originalPrice" in product ? product.originalPrice : null,
+        stock: product.stock,
+      },
       create: product,
     });
   }
