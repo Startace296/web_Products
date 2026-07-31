@@ -1,11 +1,15 @@
-// Layer: service — pure business logic, no Express import (req/res).
-// This is the ONLY place allowed to throw ApiError in the auth flow.
+// Layer: service — pure business logic, no Express import (req/res). Owns the
+// token/session lifecycle (register/login/refresh/logout/me); OTP verification rules
+// live in otpService, which throws its own ApiErrors (same split as orderService
+// calling paymentService as a collaborator that owns its own errors).
 import ms from "ms";
 import type { Prisma, User } from "@prisma/client";
 import { env } from "../config/env";
 import { runInTransaction } from "../config/prisma";
 import { userRepository } from "../repositories/userRepository";
 import { refreshTokenRepository } from "../repositories/refreshTokenRepository";
+import { otpRepository } from "../repositories/otpRepository";
+import { otpService } from "./otpService";
 import { hashPassword, comparePassword } from "../utils/password";
 import { signAccessToken, signRefreshToken, verifyRefreshToken, JwtPayload } from "../utils/jwt";
 import { hashToken } from "../utils/tokenHash";
@@ -17,6 +21,10 @@ interface AuthResult {
   user: SafeUser;
   accessToken: string;
   refreshToken: string;
+}
+
+interface RegisterResult {
+  email: string;
 }
 
 interface RefreshResult {
@@ -44,24 +52,35 @@ const issueRefreshToken = async (user: User, tx?: Prisma.TransactionClient): Pro
   return token;
 };
 
-const register = async (input: RegisterInput): Promise<AuthResult> => {
+const register = async (input: RegisterInput): Promise<RegisterResult> => {
   const existing = await userRepository.findByEmail(input.email);
   if (existing) {
-    throw ApiError.conflict("Email is already registered");
+    if (existing.isVerified) {
+      throw ApiError.conflict("Email is already registered");
+    }
+    // Tài khoản đã tồn tại nhưng chưa xác thực — thay vì 409 cụt đường (SMTP lỗi lần
+    // trước, hoặc user bỏ dở), coi lần đăng ký lặp lại này như 1 yêu cầu gửi lại mã.
+    await otpService.resend(existing.email);
+    return { email: existing.email };
   }
 
   const passwordHash = await hashPassword(input.password);
-  const user = await userRepository.create({
-    email: input.email,
-    passwordHash,
-    name: input.name,
+
+  // Gửi email TRƯỚC khi ghi DB: nếu SMTP lỗi, không để lại row User mồ côi chiếm mất
+  // email đó — client chỉ cần thử đăng ký lại. Chỉ khi gửi thành công mới tạo User +
+  // OtpCode cùng lúc trong 1 transaction.
+  const { codeHash, expiresAt } = await otpService.generateAndSend(input.email, input.name);
+
+  const user = await runInTransaction(async (tx) => {
+    const created = await userRepository.create(
+      { email: input.email, passwordHash, name: input.name },
+      tx
+    );
+    await otpRepository.create({ userId: created.id, codeHash, expiresAt }, tx);
+    return created;
   });
 
-  return {
-    user: toSafeUser(user),
-    accessToken: signAccessToken(toJwtPayload(user)),
-    refreshToken: await issueRefreshToken(user),
-  };
+  return { email: user.email };
 };
 
 const login = async (input: LoginInput): Promise<AuthResult> => {
@@ -71,6 +90,10 @@ const login = async (input: LoginInput): Promise<AuthResult> => {
   // (user enumeration on the login endpoint is the one we actually guard against).
   if (!user || !(await comparePassword(input.password, user.passwordHash))) {
     throw ApiError.unauthorized("Invalid email or password");
+  }
+
+  if (!user.isVerified) {
+    throw ApiError.forbidden("Please verify your email before logging in");
   }
 
   return {

@@ -57,3 +57,18 @@ export const newsletterLimiter = createRateLimiter(
   8,
   "Too many attempts. Please try again later."
 );
+
+// Dò mã OTP — bản chất là brute-force nhắm vào 1 mã 6 chữ số, cùng mức độ nhạy cảm với
+// loginLimiter (dò mật khẩu).
+export const otpVerifyLimiter = createRateLimiter(
+  15 * 60 * 1000,
+  10,
+  "Too many OTP attempts. Please try again later."
+);
+
+// Cùng mức với registerLimiter — mỗi lần gọi tốn 1 email SMTP thật.
+export const otpResendLimiter = createRateLimiter(
+  60 * 60 * 1000,
+  5,
+  "Too many OTP resend requests. Please try again later."
+);

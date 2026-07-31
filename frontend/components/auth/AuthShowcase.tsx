@@ -49,12 +49,21 @@ const COPY = {
     ),
     description: "Tạo tài khoản để viết review, theo dõi đơn hàng và nhận ưu đãi mới nhất.",
   },
+  "verify-otp": {
+    badge: "Xác thực tài khoản",
+    title: (
+      <>
+        Kiểm tra hộp thư của <span className="text-primary">bạn</span>
+      </>
+    ),
+    description: "Nhập mã 6 chữ số vừa được gửi tới email của bạn để hoàn tất đăng ký.",
+  },
 };
 
 // Panel quảng bá bên trái form đăng nhập/đăng ký — chỉ hiện ở màn lớn (lg+), màn nhỏ
 // ưu tiên hiển thị form. Dùng chung 1 component cho cả 2 trang để tránh lặp nội dung,
 // khác biệt qua prop variant.
-export function AuthShowcase({ variant }: { variant: "login" | "register" }) {
+export function AuthShowcase({ variant }: { variant: "login" | "register" | "verify-otp" }) {
   const copy = COPY[variant];
 
   return (

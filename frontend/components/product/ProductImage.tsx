@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { HeadphonesIcon, LaptopIcon, PackageIcon, SmartphoneIcon } from "lucide-react";
+import { LaptopIcon, PackageIcon, SmartphoneIcon, WatchIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/services/productApi";
 
@@ -12,7 +12,7 @@ import type { Product } from "@/services/productApi";
 const CATEGORY_PLACEHOLDER: Record<string, { icon: typeof SmartphoneIcon; className: string }> = {
   Smartphone: { icon: SmartphoneIcon, className: "bg-blue-50 text-blue-400" },
   Laptop: { icon: LaptopIcon, className: "bg-emerald-50 text-emerald-400" },
-  Audio: { icon: HeadphonesIcon, className: "bg-orange-50 text-orange-400" },
+  "Đồng hồ": { icon: WatchIcon, className: "bg-orange-50 text-orange-400" },
 };
 const DEFAULT_PLACEHOLDER = { icon: PackageIcon, className: "bg-neutral-100 text-neutral-400" };
 

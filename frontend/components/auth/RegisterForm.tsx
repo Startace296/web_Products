@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authApi } from "@/services/authApi";
-import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 
 // Mirror rules validate ở backend (validations/authValidation.ts) để báo lỗi ngay,
@@ -32,7 +31,6 @@ type FieldErrors = Partial<Record<"name" | "email" | "password", string>>;
 
 export function RegisterForm() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -43,9 +41,8 @@ export function RegisterForm() {
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: ({ user, accessToken }) => {
-      setAuth(accessToken, user);
-      router.push("/");
+    onSuccess: ({ email }) => {
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
     },
     onError: (error) => {
       setFormError(getErrorMessage(error, "Đăng ký thất bại, vui lòng thử lại."));

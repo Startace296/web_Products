@@ -29,7 +29,14 @@ interface RetryableConfig extends InternalAxiosRequestConfig {
 
 // Các endpoint auth tự thân: 401 ở đây là kết quả nghiệp vụ bình thường (sai mật khẩu,
 // thiếu/hết hạn refresh token...), không phải "access token hết hạn giữa chừng" — không retry.
-const NO_RETRY_PATHS = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/logout"];
+const NO_RETRY_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/verify-otp",
+  "/auth/resend-otp",
+  "/auth/refresh",
+  "/auth/logout",
+];
 
 // Gộp nhiều request 401 xảy ra đồng thời vào đúng 1 lần gọi /auth/refresh
 // (race condition kinh điển: nhiều request song song cùng bị 401 sẽ không gọi refresh N lần).

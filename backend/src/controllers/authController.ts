@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import ms from "ms";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authService } from "../services/authService";
+import { otpService } from "../services/otpService";
 import { env } from "../config/env";
 
 const REFRESH_COOKIE_NAME = "refreshToken";
@@ -28,9 +29,18 @@ const setRefreshCookie = (res: Response, token: string): void => {
 };
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { user, accessToken, refreshToken } = await authService.register(req.body);
-  setRefreshCookie(res, refreshToken);
-  res.status(201).json({ success: true, data: { user, accessToken } });
+  const { email } = await authService.register(req.body);
+  res.status(201).json({ success: true, data: { email } });
+});
+
+export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+  await otpService.verify(req.body.email, req.body.code);
+  res.status(200).json({ success: true, data: null });
+});
+
+export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
+  await otpService.resend(req.body.email);
+  res.status(200).json({ success: true, data: null });
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {

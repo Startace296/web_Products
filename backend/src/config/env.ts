@@ -27,6 +27,14 @@ const envSchema = z.object({
   // duyệt về đây trước để chữ ký được xác minh phía server, rồi mới redirect tiếp
   // sang trang frontend (dùng CLIENT_URL có sẵn), không phải URL frontend.
   VNPAY_RETURN_URL: z.string().url("VNPAY_RETURN_URL must be an absolute URL"),
+
+  SMTP_HOST: z.string().min(1, "SMTP_HOST is required"),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().min(1, "SMTP_USER is required"),
+  SMTP_PASS: z.string().min(1, "SMTP_PASS is required"),
+  // Gmail thường bỏ qua hoặc ghi đè From khác với tài khoản đã xác thực SMTP — optional,
+  // config/mailer.ts fallback về SMTP_USER nếu không set.
+  SMTP_FROM: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

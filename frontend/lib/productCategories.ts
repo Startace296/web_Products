@@ -4,4 +4,4 @@
 // Backend chưa có endpoint liệt kê category riêng (bước 4 chỉ hỗ trợ filter theo
 // category có sẵn) — hardcode tạm theo dữ liệu seed, cần đổi sang gọi API nếu category
 // trở nên động/nhiều hơn.
-export const PRODUCT_CATEGORIES = ["Smartphone", "Laptop", "Audio"];
+export const PRODUCT_CATEGORIES = ["Smartphone", "Laptop", "Đồng hồ"];

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { z } from "zod";
 import Link from "next/link";
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from "lucide-react";
@@ -30,6 +31,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
@@ -38,6 +40,14 @@ export function LoginForm() {
       router.push("/");
     },
     onError: (error) => {
+      setUnverifiedEmail(null);
+      // 403 ở đây chỉ có 1 nguyên nhân: authService.login chặn tài khoản chưa verify —
+      // khác hẳn 401 (sai email/mật khẩu), nên tách riêng để dẫn thẳng sang /verify-otp.
+      if (error instanceof AxiosError && error.response?.status === 403) {
+        setUnverifiedEmail(email);
+        setFormError(getErrorMessage(error, "Tài khoản chưa xác thực email."));
+        return;
+      }
       // Backend cố tình trả cùng 1 message cho sai email lẫn sai mật khẩu (chống dò email) — giữ nguyên ở đây.
       setFormError(getErrorMessage(error, "Email hoặc mật khẩu không đúng."));
     },
@@ -116,7 +126,22 @@ export function LoginForm() {
             {fieldErrors.password && <p className="text-sm text-destructive">{fieldErrors.password}</p>}
           </div>
 
-          {formError && <p className="text-sm text-destructive">{formError}</p>}
+          {formError && (
+            <p className="text-sm text-destructive">
+              {formError}
+              {unverifiedEmail && (
+                <>
+                  {" "}
+                  <Link
+                    href={`/verify-otp?email=${encodeURIComponent(unverifiedEmail)}`}
+                    className="underline underline-offset-4"
+                  >
+                    Xác thực ngay
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
 
           <Button
             type="submit"

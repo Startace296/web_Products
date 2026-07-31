@@ -23,15 +23,36 @@ interface AuthResponse {
   accessToken: string;
 }
 
+interface RegisterResponse {
+  email: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  code: string;
+}
+
+export interface ResendOtpPayload {
+  email: string;
+}
+
 export const authApi = {
-  register: async (payload: RegisterPayload): Promise<AuthResponse> => {
-    const { data } = await api.post<ApiEnvelope<AuthResponse>>("/auth/register", payload);
+  register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
+    const { data } = await api.post<ApiEnvelope<RegisterResponse>>("/auth/register", payload);
     return data.data;
   },
 
   login: async (payload: LoginPayload): Promise<AuthResponse> => {
     const { data } = await api.post<ApiEnvelope<AuthResponse>>("/auth/login", payload);
     return data.data;
+  },
+
+  verifyOtp: async (payload: VerifyOtpPayload): Promise<void> => {
+    await api.post("/auth/verify-otp", payload);
+  },
+
+  resendOtp: async (payload: ResendOtpPayload): Promise<void> => {
+    await api.post("/auth/resend-otp", payload);
   },
 
   logout: async (): Promise<void> => {

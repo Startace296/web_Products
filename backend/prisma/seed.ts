@@ -49,7 +49,7 @@ const products = [
     description: "Industry-leading noise-cancelling wireless headphones.",
     imageUrl: "https://images.example.com/products/sony-wh-1000xm6.jpg",
     brand: "Sony",
-    category: "Audio",
+    category: "Đồng hồ",
     price: 8_990_000,
     originalPrice: 9_990_000,
     stock: 60,
@@ -66,6 +66,7 @@ async function main(): Promise<void> {
       // tường minh null để XOÁ giảm giá cũ nếu seed chạy lại sau khi seed trước đó/admin
       // đã set originalPrice cho sản phẩm đó, không phải omit field (omit = "không đổi").
       update: {
+        category: product.category,
         price: product.price,
         originalPrice: "originalPrice" in product ? product.originalPrice : null,
         stock: product.stock,

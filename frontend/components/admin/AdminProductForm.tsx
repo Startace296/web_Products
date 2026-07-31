@@ -43,8 +43,16 @@ const productFormSchema = z.object({
   specifications: z
     .array(
       z.object({
-        label: z.string().trim().min(1, "Mỗi thông số cần có cả tên và giá trị"),
-        value: z.string().trim().min(1, "Mỗi thông số cần có cả tên và giá trị"),
+        label: z
+          .string()
+          .trim()
+          .min(1, "Mỗi thông số cần có cả tên và giá trị")
+          .max(100, "Tên thông số tối đa 100 ký tự"),
+        value: z
+          .string()
+          .trim()
+          .min(1, "Mỗi thông số cần có cả tên và giá trị")
+          .max(300, "Giá trị thông số tối đa 300 ký tự"),
       })
     )
     .max(30, "Tối đa 30 thông số")
@@ -165,6 +173,15 @@ function AdminProductFormFields({ mode, product }: { mode: "create" | "edit"; pr
       const errors: FieldErrors = {};
       for (const issue of result.error.issues) {
         const key = issue.path[0] as keyof FieldErrors;
+        // Lỗi trong mảng specifications: path là ["specifications", index, "label"|"value"]
+        // — path[0] không đủ để biết DÒNG nào sai, nêu rõ tên dòng (hoặc số thứ tự nếu
+        // dòng chưa có tên) thay vì để admin phải dò từng dòng.
+        if (key === "specifications" && typeof issue.path[1] === "number" && !errors.specifications) {
+          const rowIndex = issue.path[1] as number;
+          const rowLabel = cleanedSpecifications[rowIndex]?.label || `dòng ${rowIndex + 1}`;
+          errors.specifications = `"${rowLabel}": ${issue.message}`;
+          continue;
+        }
         if (!errors[key]) errors[key] = issue.message;
       }
       setFieldErrors(errors);
@@ -235,7 +252,7 @@ function AdminProductFormFields({ mode, product }: { mode: "create" | "edit"; pr
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 aria-invalid={!!fieldErrors.category}
-                placeholder="Smartphone, Laptop, Audio..."
+                placeholder="Smartphone, Laptop, Đồng hồ..."
               />
               {fieldErrors.category && <p className="text-sm text-destructive">{fieldErrors.category}</p>}
             </div>

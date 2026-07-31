@@ -61,6 +61,7 @@ model User {
   notificationsReceived Notification[] @relation("NotificationRecipient")
   notificationsSent     Notification[] @relation("NotificationActor")
   refreshTokens         RefreshToken[]
+  otpCodes              OtpCode[]
   cartItems             CartItem[]
   orders                Order[]
 
@@ -86,7 +87,7 @@ model Product {
   // see productRepository.decrementStock.
   stock       Int      @default(0)
   // Mảng { label, value } có thứ tự hiển thị (không phải object key-value) — khác
-  // category/brand nên không cố định field cứng: Smartphone cần "Chip"/"RAM", Audio cần
+  // category/brand nên không cố định field cứng: Smartphone cần "Chip"/"RAM", Đồng hồ cần
   // "Chuẩn kết nối"... admin tự đặt tên thông số phù hợp từng sản phẩm (xem
   // AdminProductForm.tsx). NULL/[] đều hợp lệ — ProductDetail chỉ hiện bảng khi có dữ liệu.
   specifications Json?
@@ -184,6 +185,25 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// Mã OTP xác thực email sau đăng ký. codeHash KHÔNG @unique (khác RefreshToken.tokenHash)
+// vì mã 6 chữ số chỉ có 1 triệu giá trị khả dĩ — trùng nhau giữa các user khác nhau là
+// bình thường, tính duy nhất chỉ có ý nghĩa trong phạm vi 1 userId. "Mã đang hiệu lực"
+// của 1 user = row consumedAt=null mới nhất (xem otpRepository.findLatestActiveForUser).
+model OtpCode {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  codeHash   String    @map("code_hash")
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("otp_codes")
 }
 
 model Notification {
