@@ -8,8 +8,8 @@ const products = [
     imageUrl: "https://images.example.com/products/iphone-16-pro.jpg",
     brand: "Apple",
     category: "Smartphone",
-    price: 29_990_000,
-    originalPrice: 32_990_000,
+    price: 19_990_000,
+    originalPrice: 21_990_000,
     stock: 40,
   },
   {
@@ -19,7 +19,7 @@ const products = [
     imageUrl: "https://images.example.com/products/galaxy-s25-ultra.jpg",
     brand: "Samsung",
     category: "Smartphone",
-    price: 33_990_000,
+    price: 18_990_000,
     stock: 35,
   },
   {
@@ -29,8 +29,8 @@ const products = [
     imageUrl: "https://images.example.com/products/macbook-pro-14-m4.jpg",
     brand: "Apple",
     category: "Laptop",
-    price: 42_990_000,
-    originalPrice: 45_990_000,
+    price: 17_990_000,
+    originalPrice: 19_990_000,
     stock: 15,
   },
   {
@@ -40,7 +40,7 @@ const products = [
     imageUrl: "https://images.example.com/products/dell-xps-15.jpg",
     brand: "Dell",
     category: "Laptop",
-    price: 45_990_000,
+    price: 11_990_000,
     stock: 12,
   },
   {
@@ -50,8 +50,8 @@ const products = [
     imageUrl: "https://images.example.com/products/sony-wh-1000xm6.jpg",
     brand: "Sony",
     category: "Đồng hồ",
-    price: 8_990_000,
-    originalPrice: 9_990_000,
+    price: 10_990_000,
+    originalPrice: 12_490_000,
     stock: 60,
   },
 ];
