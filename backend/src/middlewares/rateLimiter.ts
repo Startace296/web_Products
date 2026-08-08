@@ -72,3 +72,52 @@ export const otpResendLimiter = createRateLimiter(
   5,
   "Too many OTP resend requests. Please try again later."
 );
+
+// Khoá theo email trong body thay vì IP — các limiter phía trên đều đếm theo req.ip nên
+// một kẻ tấn công đổi IP liên tục (proxy xoay vòng, botnet, nhiều thiết bị) vẫn né được
+// hoàn toàn, miễn là mỗi IP không vượt ngưỡng riêng của nó. Đếm theo email chặn đúng vào
+// tài khoản/nạn nhân bị nhắm tới bất kể request đến từ bao nhiêu IP khác nhau.
+// Bỏ qua (skip) khi body chưa có email hợp lệ: validate(schema) chạy SAU middleware này
+// trong route, nên request thiếu/sai kiểu email vẫn lọt tới đây — gộp chung các request đó
+// vào 1 bucket "unknown" sẽ vô tình rate-limit chéo giữa các client không liên quan gì
+// nhau. IP limiter ở trên + Zod validation phía sau đã đủ xử lý case thiếu email.
+const createEmailRateLimiter = (windowMs: number, max: number, message: string) =>
+  rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => typeof req.body?.email !== "string" || req.body.email.trim() === "",
+    keyGenerator: (req) => req.body.email.trim().toLowerCase(),
+    handler: (_req, _res, next) => {
+      next(ApiError.tooManyRequests(message));
+    },
+  });
+
+// Dò mật khẩu nhắm vào 1 tài khoản cụ thể nhưng rải request qua nhiều IP sẽ né được
+// loginLimiter (theo IP) — khoá thêm theo email để giới hạn tổng số lần thử trên tài
+// khoản đó bất kể nguồn IP.
+export const loginEmailLimiter = createEmailRateLimiter(
+  15 * 60 * 1000,
+  10,
+  "Too many login attempts for this account. Please try again in 15 minutes."
+);
+
+// Dò mã OTP rải qua nhiều IP nhắm vào cùng 1 email sẽ né được otpVerifyLimiter (theo IP),
+// dù mỗi mã OTP đã tự giới hạn 5 lần thử sai trước khi bị huỷ (xem otpService.verify) —
+// khoá thêm theo email để chặn việc dò nhiều mã OTP liên tiếp (mỗi mã 5 lần) từ nhiều IP.
+export const otpVerifyEmailLimiter = createEmailRateLimiter(
+  15 * 60 * 1000,
+  10,
+  "Too many OTP attempts for this account. Please try again later."
+);
+
+// Spam email OTP vào hộp thư nạn nhân từ nhiều IP khác nhau sẽ né được otpResendLimiter
+// (theo IP). Cooldown 60s trong otpService.resend chỉ chặn gọi dồn dập liên tiếp, không
+// giới hạn tổng số lượt trong 1 giờ — khoá thêm theo email để chặn đúng việc "bơm" email
+// vào một hộp thư cụ thể.
+export const otpResendEmailLimiter = createEmailRateLimiter(
+  60 * 60 * 1000,
+  5,
+  "Too many OTP resend requests for this account. Please try again later."
+);
