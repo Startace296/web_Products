@@ -8,9 +8,14 @@ type DbClient = Prisma.TransactionClient | typeof prisma;
 
 export type ProductSortBy = "newest" | "reviewCount" | "rating";
 
-interface FindManyParams {
+interface ProductFilterParams {
   category?: string;
   search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
+interface FindManyParams extends ProductFilterParams {
   sortBy?: ProductSortBy;
   skip: number;
   take: number;
@@ -20,13 +25,21 @@ interface FindManyParams {
 // (tổng số phải khớp với số item trả về, không lệch do 2 nơi build where khác nhau).
 // contains trên MySQL đã case-insensitive sẵn nhờ collation utf8mb4_unicode_ci (bước 2),
 // không cần `mode: "insensitive"` (option đó chỉ áp dụng cho Postgres).
-const buildWhere = (category?: string, search?: string): Prisma.ProductWhereInput | undefined => {
+const buildWhere = ({ category, search, minPrice, maxPrice }: ProductFilterParams): Prisma.ProductWhereInput | undefined => {
   const conditions: Prisma.ProductWhereInput[] = [];
 
   if (category) conditions.push({ category });
   if (search) {
     conditions.push({
       OR: [{ name: { contains: search } }, { description: { contains: search } }],
+    });
+  }
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    conditions.push({
+      price: {
+        ...(minPrice !== undefined ? { gte: minPrice } : {}),
+        ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+      },
     });
   }
 
@@ -40,19 +53,27 @@ const ORDER_BY: Record<ProductSortBy, Prisma.ProductOrderByWithRelationInput> = 
 };
 
 const findMany = (
-  { category, search, sortBy = "newest", skip, take }: FindManyParams,
+  { category, search, minPrice, maxPrice, sortBy = "newest", skip, take }: FindManyParams,
   db: DbClient = prisma
 ): Promise<Product[]> => {
   return db.product.findMany({
-    where: buildWhere(category, search),
+    where: buildWhere({ category, search, minPrice, maxPrice }),
     orderBy: ORDER_BY[sortBy],
     skip,
     take,
   });
 };
 
-const count = (category: string | undefined, search: string | undefined, db: DbClient = prisma): Promise<number> => {
-  return db.product.count({ where: buildWhere(category, search) });
+const count = (filters: ProductFilterParams, db: DbClient = prisma): Promise<number> => {
+  return db.product.count({ where: buildWhere(filters) });
+};
+
+// Min/max giá THẬT trên toàn catalog — dùng để FE tự tính mốc "Mức giá" (vd Dưới 2
+// triệu/2-4 triệu/...) từ dữ liệu thực thay vì hardcode, nên mốc luôn hợp lý kể cả khi
+// catalog đổi (thêm sản phẩm rất rẻ/rất đắt). {min:0,max:0} khi chưa có sản phẩm nào.
+const getPriceRange = async (db: DbClient = prisma): Promise<{ min: number; max: number }> => {
+  const result = await db.product.aggregate({ _min: { price: true }, _max: { price: true } });
+  return { min: result._min.price ?? 0, max: result._max.price ?? 0 };
 };
 
 const findBySlug = (slug: string, db: DbClient = prisma): Promise<Product | null> => {
@@ -146,6 +167,7 @@ const remove = (id: string, db: DbClient = prisma): Promise<Product> => {
 export const productRepository = {
   findMany,
   count,
+  getPriceRange,
   findBySlug,
   findById,
   updateAggregates,

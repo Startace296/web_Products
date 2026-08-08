@@ -15,6 +15,9 @@ export const productRouter = Router();
 
 // Đọc: public, không cần đăng nhập.
 productRouter.get("/", validate(listProductsQuerySchema, "query"), productController.list);
+// PHẢI đứng trước "/:slug" bên dưới — nếu không Express sẽ khớp "/price-range" vào
+// :slug trước khi kịp tới route này (route đăng ký trước thắng khi cùng method).
+productRouter.get("/price-range", productController.getPriceRange);
 productRouter.get("/:slug", productController.getBySlug);
 
 // Ghi: chỉ ADMIN. verifyToken đứng trước requireRole (cần req.user trước khi check

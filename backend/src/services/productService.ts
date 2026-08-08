@@ -15,18 +15,22 @@ interface PaginatedResult<T> {
 }
 
 const listProducts = async (query: ListProductsQuery): Promise<PaginatedResult<Product>> => {
-  const { category, search, page, limit, sortBy } = query;
+  const { category, search, minPrice, maxPrice, page, limit, sortBy } = query;
   const skip = (page - 1) * limit;
 
   const [items, total] = await Promise.all([
-    productRepository.findMany({ category, search, sortBy, skip, take: limit }),
-    productRepository.count(category, search),
+    productRepository.findMany({ category, search, minPrice, maxPrice, sortBy, skip, take: limit }),
+    productRepository.count({ category, search, minPrice, maxPrice }),
   ]);
 
   return {
     items,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
+};
+
+const getPriceRange = (): Promise<{ min: number; max: number }> => {
+  return productRepository.getPriceRange();
 };
 
 const getProductBySlug = async (slug: string): Promise<Product> => {
@@ -88,6 +92,7 @@ const removeProduct = async (id: string): Promise<void> => {
 
 export const productService = {
   listProducts,
+  getPriceRange,
   getProductBySlug,
   createProduct,
   updateProduct,

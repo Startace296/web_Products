@@ -5,22 +5,30 @@ import { productApi } from "@/services/productApi";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard } from "./ProductCard";
+import type { PriceRange } from "@/lib/priceBuckets";
 
 interface ProductListProps {
-  // Điều khiển từ ProductHero / CategorySidebar (HomePage) — mặc định rỗng để component
-  // vẫn dùng được độc lập.
+  // Điều khiển từ ProductHero / CategorySidebar / ProductPriceFilter (HomePage) — mặc
+  // định rỗng để component vẫn dùng được độc lập.
   search?: string;
   category?: string;
+  priceRange?: PriceRange;
 }
 
-export function ProductList({ search = "", category }: ProductListProps) {
+export function ProductList({ search = "", category, priceRange }: ProductListProps) {
   // Debounce only the value used for the query key/request — the raw value comes from
   // the parent-controlled `search` prop (typed into ProductHero) so typing feels instant.
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["products", { category, search: debouncedSearch }],
-    queryFn: () => productApi.list({ category, search: debouncedSearch || undefined }),
+    queryKey: ["products", { category, search: debouncedSearch, priceRange }],
+    queryFn: () =>
+      productApi.list({
+        category,
+        search: debouncedSearch || undefined,
+        minPrice: priceRange?.min,
+        maxPrice: priceRange?.max,
+      }),
   });
 
   const title = debouncedSearch ? `Kết quả cho "${debouncedSearch}"` : category ? `Danh mục: ${category}` : "Sản phẩm";

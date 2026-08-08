@@ -15,6 +15,11 @@ export const getBySlug = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({ success: true, data: product });
 });
 
+export const getPriceRange = asyncHandler(async (_req: Request, res: Response) => {
+  const range = await productService.getPriceRange();
+  res.status(200).json({ success: true, data: range });
+});
+
 export const create = asyncHandler(async (req: Request, res: Response) => {
   const product = await productService.createProduct(req.body as CreateProductInput);
   res.status(201).json({ success: true, data: product });

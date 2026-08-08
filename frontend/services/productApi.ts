@@ -52,9 +52,18 @@ export type ProductSortBy = "newest" | "reviewCount" | "rating";
 export interface ListProductsParams {
   category?: string;
   search?: string;
+  minPrice?: number;
+  maxPrice?: number;
   page?: number;
   limit?: number;
   sortBy?: ProductSortBy;
+}
+
+// Min/max giá THẬT trên toàn catalog (không phải khoảng đang chọn để lọc — xem
+// lib/priceBuckets.ts's PriceRange cho cái đó) — dùng để tự tính mốc "Mức giá".
+export interface ProductPriceRange {
+  min: number;
+  max: number;
 }
 
 export interface ListProductsResult {
@@ -87,6 +96,11 @@ export const productApi = {
   list: async (params: ListProductsParams = {}): Promise<ListProductsResult> => {
     const { data } = await api.get<ListEnvelope<Product>>("/products", { params });
     return { items: data.data, pagination: data.pagination };
+  },
+
+  getPriceRange: async (): Promise<ProductPriceRange> => {
+    const { data } = await api.get<DetailEnvelope<ProductPriceRange>>("/products/price-range");
+    return data.data;
   },
 
   getBySlug: async (slug: string): Promise<Product> => {
