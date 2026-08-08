@@ -29,14 +29,33 @@ const findByUserAndProduct = (userId: string, productId: string, db: DbClient = 
   return db.cartItem.findUnique({ where: { userId_productId: { userId, productId } } });
 };
 
-// Atomic: 2 request "thêm vào giỏ" cùng sản phẩm chạy song song không mất update
-// nhờ increment thực hiện ở tầng DB (1 câu SQL), không phải read-modify-write ở app.
-const upsertItem = (userId: string, productId: string, quantity: number, db: DbClient = prisma): Promise<CartItem> => {
-  return db.cartItem.upsert({
-    where: { userId_productId: { userId, productId } },
-    update: { quantity: { increment: quantity } },
-    create: { userId, productId, quantity },
-  });
+// Atomic: điều kiện "không vượt cap" nằm ngay trong WHERE, cùng 1 câu SQL với việc ghi —
+// khác với increment qua upsert() trước đây, nơi cartService phải tự đọc quantity hiện
+// tại rồi mới quyết định có được ghi hay không (đọc-rồi-ghi không atomic: 2 request cùng
+// đọc quantity cũ trước khi bên nào ghi xong sẽ cùng pass check rồi cùng ghi, cộng dồn
+// vượt cap). count === 0 nghĩa là HOẶC chưa có dòng nào (lần đầu thêm — cartService sẽ
+// tạo mới), HOẶC dòng đã tồn tại nhưng cộng thêm sẽ vượt cap.
+const incrementIfWithinCap = (
+  userId: string,
+  productId: string,
+  quantity: number,
+  cap: number,
+  db: DbClient = prisma
+): Promise<number> => {
+  return db.cartItem
+    .updateMany({
+      where: { userId, productId, quantity: { lte: cap - quantity } },
+      data: { quantity: { increment: quantity } },
+    })
+    .then((result) => result.count);
+};
+
+// Tạo dòng đầu tiên cho (userId, productId). quantity ban đầu luôn <= cap (Zod đã chặn ở
+// request), nên không cần check cap ở đây — chỉ có thể lỗi P2002 nếu 1 request khác vừa
+// tạo dòng này trước (2 lần "thêm lần đầu" cùng sản phẩm chạy song song), cartService xử
+// lý bằng cách bắt P2002 rồi thử lại incrementIfWithinCap.
+const createItem = (userId: string, productId: string, quantity: number, db: DbClient = prisma): Promise<CartItem> => {
+  return db.cartItem.create({ data: { userId, productId, quantity } });
 };
 
 const setQuantity = (userId: string, productId: string, quantity: number, db: DbClient = prisma): Promise<CartItem> => {
@@ -54,7 +73,8 @@ const clearByUser = (userId: string, db: DbClient = prisma): Promise<Prisma.Batc
 export const cartRepository = {
   findManyByUser,
   findByUserAndProduct,
-  upsertItem,
+  incrementIfWithinCap,
+  createItem,
   setQuantity,
   removeItem,
   clearByUser,

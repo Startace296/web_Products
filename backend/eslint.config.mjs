@@ -15,5 +15,13 @@ export default tseslint.config(
       // @typescript-eslint's rule needs this option set explicitly to match.
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", ignoreRestSiblings: true }],
     },
+  },
+  {
+    // vitest.config.ts deliberately stays CommonJS (require/module.exports) — no
+    // "type": "module" in package.json, tsconfig module: "CommonJS" — see its own comment.
+    files: ["vitest.config.ts"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
   }
 );
