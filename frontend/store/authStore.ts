@@ -6,6 +6,7 @@
 // nào đó tự refresh lại (xem lib/axios.ts) — ProtectedRoute (bước 6) xử lý việc này
 // bằng cách gọi authApi.me() lúc mount thay vì tự bootstrap toàn app.
 import { create } from "zustand";
+import { getQueryClient } from "@/providers/QueryProvider";
 
 export interface AuthUser {
   id: string;
@@ -30,11 +31,23 @@ interface AuthState {
   clearAuth: () => void;
 }
 
+// Xoá React Query cache mỗi khi danh tính đổi (đăng nhập MỚI hoặc đăng xuất) — nếu
+// không, cache của user/admin trước (giỏ hàng, đơn hàng...) vẫn "fresh" trong bộ nhớ
+// và hiện nhầm sang tài khoản vừa đăng nhập trong CÙNG tab (query key như ["cart"]
+// không tự phân biệt theo user). Đặt ở store thay vì rải useQueryClient().clear() ở
+// từng nơi gọi setAuth/clearAuth (LoginForm, Navbar, lib/axios.ts khi refresh thất
+// bại, ProfileView khi xoá tài khoản...) để không nơi nào có thể quên gọi.
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   user: null,
-  setAuth: (accessToken, user) => set({ accessToken, user }),
+  setAuth: (accessToken, user) => {
+    getQueryClient().clear();
+    set({ accessToken, user });
+  },
   setAccessToken: (accessToken) => set({ accessToken }),
   setUser: (user) => set({ user }),
-  clearAuth: () => set({ accessToken: null, user: null }),
+  clearAuth: () => {
+    getQueryClient().clear();
+    set({ accessToken: null, user: null });
+  },
 }));
