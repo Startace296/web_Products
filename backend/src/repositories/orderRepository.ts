@@ -26,6 +26,15 @@ const orderSelect = {
 
 export type OrderWithItems = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
 
+// Chỉ dùng cho admin: danh sách đơn của TẤT CẢ user cần biết đơn của ai — orderSelect
+// dùng cho luồng khách hàng không cần field này vì đã biết chắc đó là đơn của chính mình.
+const orderAdminSelect = {
+  ...orderSelect,
+  user: { select: { id: true, name: true, email: true } },
+} satisfies Prisma.OrderSelect;
+
+export type OrderWithItemsAndUser = Prisma.OrderGetPayload<{ select: typeof orderAdminSelect }>;
+
 interface CreateOrderInput {
   userId: string;
   paymentMethod: PaymentMethod;
@@ -103,6 +112,44 @@ const markFailed = (id: string, db: DbClient = prisma): Promise<OrderWithItems> 
   });
 };
 
+interface FindManyAdminParams {
+  status?: OrderStatus;
+  skip: number;
+  take: number;
+}
+
+const findManyAdmin = (
+  { status, skip, take }: FindManyAdminParams,
+  db: DbClient = prisma
+): Promise<OrderWithItemsAndUser[]> => {
+  return db.order.findMany({
+    where: status ? { status } : undefined,
+    select: orderAdminSelect,
+    orderBy: { createdAt: "desc" },
+    skip,
+    take,
+  });
+};
+
+const countAdmin = (status: OrderStatus | undefined, db: DbClient = prisma): Promise<number> => {
+  return db.order.count({ where: status ? { status } : undefined });
+};
+
+// Update có điều kiện — WHERE khớp cả id LẪN status hiện tại, cùng kiểu "check-and-set
+// nguyên tử" như decrementStock. Chặn race: 2 admin bấm cùng lúc, hoặc admin cập nhật
+// đúng lúc IPN VNPay cũng đang xử lý cùng đơn. Trả về số dòng bị ảnh hưởng: 0 nghĩa là
+// đơn đã đổi status ở nơi khác giữa lúc đọc và lúc ghi — orderService diễn giải thành lỗi.
+const updateStatus = (
+  id: string,
+  fromStatus: OrderStatus,
+  toStatus: OrderStatus,
+  db: DbClient = prisma
+): Promise<number> => {
+  return db.order
+    .updateMany({ where: { id, status: fromStatus }, data: { status: toStatus } })
+    .then((result) => result.count);
+};
+
 export const orderRepository = {
   create,
   findManyByUser,
@@ -112,4 +159,7 @@ export const orderRepository = {
   setVnpTxnRef,
   markPaid,
   markFailed,
+  findManyAdmin,
+  countAdmin,
+  updateStatus,
 };

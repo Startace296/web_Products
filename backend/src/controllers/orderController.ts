@@ -2,7 +2,12 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { orderService } from "../services/orderService";
-import type { CreateOrderInput, ListOrdersQuery } from "../validations/orderValidation";
+import type {
+  AdminListOrdersQuery,
+  CreateOrderInput,
+  ListOrdersQuery,
+  UpdateOrderStatusInput,
+} from "../validations/orderValidation";
 
 export const create = asyncHandler(async (req: Request, res: Response) => {
   // req.ip cần app.set("trust proxy", 1) đúng ở prod (đã có trong app.ts) để không
@@ -18,6 +23,16 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getById = asyncHandler(async (req: Request, res: Response) => {
-  const order = await orderService.getById(req.user!.id, req.params.id);
+  const order = await orderService.getById(req.user!, req.params.id);
+  res.status(200).json({ success: true, data: order });
+});
+
+export const adminList = asyncHandler(async (req: Request, res: Response) => {
+  const result = await orderService.listAdmin(req.query as unknown as AdminListOrdersQuery);
+  res.status(200).json({ success: true, data: result.items, pagination: result.pagination });
+});
+
+export const updateStatus = asyncHandler(async (req: Request, res: Response) => {
+  const order = await orderService.updateStatus(req.params.id, (req.body as UpdateOrderStatusInput).status);
   res.status(200).json({ success: true, data: order });
 });

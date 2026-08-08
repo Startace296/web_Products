@@ -74,6 +74,27 @@ export interface ListOrdersResult {
   pagination: Pagination;
 }
 
+// Đơn hàng của bất kỳ ai, kèm thông tin người mua — chỉ admin mới thấy được (xem
+// orderRepository.orderAdminSelect ở backend).
+export interface AdminOrder extends Order {
+  user: { id: string; name: string; email: string };
+}
+
+export interface AdminListOrdersParams {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+}
+
+export interface AdminListOrdersResult {
+  items: AdminOrder[];
+  pagination: Pagination;
+}
+
+// Không gồm "PENDING_PAYMENT" — trạng thái đó chỉ đổi tự động qua IPN VNPay, admin
+// không được set thủ công (xem updateOrderStatusSchema ở backend).
+export type UpdatableOrderStatus = Exclude<OrderStatus, "PENDING_PAYMENT">;
+
 export const orderApi = {
   create: async (input: CreateOrderInput): Promise<CreateOrderResult> => {
     const { data } = await api.post<DetailEnvelope<CreateOrderResult>>("/orders", input);
@@ -87,6 +108,16 @@ export const orderApi = {
 
   getById: async (id: string): Promise<Order> => {
     const { data } = await api.get<DetailEnvelope<Order>>(`/orders/${id}`);
+    return data.data;
+  },
+
+  adminList: async (params: AdminListOrdersParams = {}): Promise<AdminListOrdersResult> => {
+    const { data } = await api.get<ListEnvelope<AdminOrder>>("/orders/admin", { params });
+    return { items: data.data, pagination: data.pagination };
+  },
+
+  updateStatus: async (id: string, status: UpdatableOrderStatus): Promise<Order> => {
+    const { data } = await api.patch<DetailEnvelope<Order>>(`/orders/admin/${id}/status`, { status });
     return data.data;
   },
 };

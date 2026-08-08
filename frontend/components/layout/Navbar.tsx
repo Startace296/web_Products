@@ -38,9 +38,14 @@ export function Navbar() {
         {user ? (
           <>
             {user.role === "ADMIN" && (
-              <Link href="/admin/products" className="text-muted-foreground hover:text-foreground">
-                Quản trị
-              </Link>
+              <>
+                <Link href="/admin/products" className="text-muted-foreground hover:text-foreground">
+                  Sản phẩm
+                </Link>
+                <Link href="/admin/orders" className="text-muted-foreground hover:text-foreground">
+                  Đơn hàng
+                </Link>
+              </>
             )}
             <CartLink />
             <NotificationBell />

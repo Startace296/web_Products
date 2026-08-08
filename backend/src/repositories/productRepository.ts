@@ -84,6 +84,18 @@ const decrementStock = (productId: string, quantity: number, db: DbClient = pris
     .then((result) => result.count);
 };
 
+// Hoàn kho khi admin huỷ 1 đơn đã CONFIRMED (đã trừ kho thật trước đó — xem
+// orderService.updateStatus). Không cần guard trong WHERE như decrementStock vì cộng
+// kho luôn hợp lệ, không có điều kiện "đủ hàng" nào cần kiểm tra.
+const incrementStock = (productId: string, quantity: number, db: DbClient = prisma): Promise<number> => {
+  return db.product
+    .updateMany({
+      where: { id: productId },
+      data: { stock: { increment: quantity } },
+    })
+    .then((result) => result.count);
+};
+
 export interface ProductSpecificationInput {
   label: string;
   value: string;
@@ -138,6 +150,7 @@ export const productRepository = {
   findById,
   updateAggregates,
   decrementStock,
+  incrementStock,
   create,
   update,
   remove,

@@ -14,13 +14,15 @@
 // Giỏ hàng được xoá ngay lập tức cho CẢ HAI phương thức — việc này không có rủi ro
 // tài chính/tồn kho (tệ nhất là phải thêm lại giỏ nếu bỏ dở thanh toán VNPay), khác
 // hẳn với trừ kho.
+import type { OrderStatus } from "@prisma/client";
 import { runInTransaction } from "../config/prisma";
 import { cartRepository } from "../repositories/cartRepository";
-import { orderRepository, OrderWithItems } from "../repositories/orderRepository";
+import { orderRepository, OrderWithItems, OrderWithItemsAndUser } from "../repositories/orderRepository";
 import { productRepository } from "../repositories/productRepository";
 import { paymentService } from "./paymentService";
 import { ApiError } from "../utils/ApiError";
-import type { CreateOrderInput, ListOrdersQuery } from "../validations/orderValidation";
+import type { AuthenticatedUser } from "../types/express";
+import type { AdminListOrdersQuery, CreateOrderInput, ListOrdersQuery } from "../validations/orderValidation";
 
 interface PaginatedResult<T> {
   items: T[];
@@ -114,20 +116,91 @@ const listByUser = async (userId: string, query: ListOrdersQuery): Promise<Pagin
   };
 };
 
-const getById = async (userId: string, orderId: string): Promise<OrderWithItems> => {
+const getById = async (requester: AuthenticatedUser, orderId: string): Promise<OrderWithItems> => {
   const order = await orderRepository.findById(orderId);
   if (!order) {
     throw ApiError.notFound("Order not found");
   }
   // Kiểm tra quyền sở hữu ở service (không phải controller) — cùng pattern reviewService.update.
-  if (order.userId !== userId) {
+  // ADMIN bỏ qua check này để có thể xem chi tiết đơn của bất kỳ ai (dùng chung route/service
+  // với khách hàng thay vì tạo route admin riêng chỉ để đọc — không có gì khác nhau về data).
+  if (requester.role !== "ADMIN" && order.userId !== requester.id) {
     throw ApiError.forbidden("You can only view your own orders");
   }
   return order;
+};
+
+const listAdmin = async (query: AdminListOrdersQuery): Promise<PaginatedResult<OrderWithItemsAndUser>> => {
+  const { page, limit, status } = query;
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    orderRepository.findManyAdmin({ status, skip, take: limit }),
+    orderRepository.countAdmin(status),
+  ]);
+
+  return {
+    items,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
+
+// Luồng vận chuyển hợp lệ, admin thao tác thủ công: CONFIRMED -> SHIPPING -> COMPLETED,
+// hoặc CONFIRMED -> CANCELLED (huỷ trước khi giao). Không cho SHIPPING -> CANCELLED: hàng
+// đã rời kho, "huỷ" ở bước này thực chất là 1 luồng trả hàng/hoàn tiền khác hẳn, ngoài
+// phạm vi model hiện tại. PENDING_PAYMENT không có transition thủ công nào (xem
+// updateOrderStatusSchema). COMPLETED/CANCELLED là trạng thái cuối.
+const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  PENDING_PAYMENT: [],
+  CONFIRMED: ["SHIPPING", "CANCELLED"],
+  SHIPPING: ["COMPLETED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
+const updateStatus = async (orderId: string, targetStatus: OrderStatus): Promise<OrderWithItems> => {
+  const current = await orderRepository.findById(orderId);
+  if (!current) {
+    throw ApiError.notFound("Order not found");
+  }
+
+  if (!ALLOWED_TRANSITIONS[current.status].includes(targetStatus)) {
+    throw ApiError.badRequest(`Cannot change order status from ${current.status} to ${targetStatus}`);
+  }
+
+  if (targetStatus === "CANCELLED") {
+    // Tới được đây nghĩa là current.status === "CONFIRMED" (nhánh transition hợp lệ duy
+    // nhất dẫn tới CANCELLED) — lúc này kho đã bị trừ THẬT (COD trừ ngay lúc tạo đơn,
+    // VNPAY trừ lúc IPN xác nhận thanh toán, xem orderService.create/paymentService.
+    // handleIpn), nên huỷ ở đây bắt buộc phải hoàn kho, khác với markFailed (huỷ đơn
+    // PENDING_PAYMENT thanh toán thất bại — kho chưa từng bị trừ nên không có gì để hoàn).
+    return runInTransaction(async (tx) => {
+      const affected = await orderRepository.updateStatus(orderId, current.status, targetStatus, tx);
+      if (affected === 0) {
+        throw ApiError.conflict("Order status has changed, please refresh and try again");
+      }
+      for (const item of current.items) {
+        if (item.productId) {
+          await productRepository.incrementStock(item.productId, item.quantity, tx);
+        }
+      }
+      const updated = await orderRepository.findById(orderId, tx);
+      return updated!;
+    });
+  }
+
+  const affected = await orderRepository.updateStatus(orderId, current.status, targetStatus);
+  if (affected === 0) {
+    throw ApiError.conflict("Order status has changed, please refresh and try again");
+  }
+  const updated = await orderRepository.findById(orderId);
+  return updated!;
 };
 
 export const orderService = {
   create,
   listByUser,
   getById,
+  listAdmin,
+  updateStatus,
 };
