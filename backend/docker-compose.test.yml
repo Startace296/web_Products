@@ -1,0 +1,22 @@
+# Test-only MySQL instance — separate port/volume from the dev DB (docker-compose,
+# if any, or a local install) so `npm test` can freely TRUNCATE tables between tests
+# without touching real data. Start with `npm run test:db:up`.
+services:
+  mysql-test:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: test
+      MYSQL_DATABASE: techpulse_test
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ptest"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql_test_data:

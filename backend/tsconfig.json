@@ -18,5 +18,7 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  // src/test/** không nằm trong production build (dist/) — chỉ vitest chạy trực tiếp
+  // qua ts-node/esbuild của nó (test.include trong vitest.config.ts), không qua tsc này.
+  "exclude": ["node_modules", "dist", "src/test/**"]
 }
