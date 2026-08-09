@@ -31,7 +31,11 @@ export function ProductImage({ product, className, iconClassName }: ProductImage
 
   if (hasRealImage) {
     return (
-      <div className={cn("flex items-center justify-center overflow-hidden bg-white p-4", className)}>
+      // "group" cục bộ (không đặt tên) — hiệu ứng zoom kích hoạt khi trỏ chuột vào ĐÚNG
+      // vùng ảnh này, không phụ thuộc component cha nào đó có group/card hay không. Nhờ
+      // vậy hoạt động nhất quán dù dùng trong ProductCard, CartView hay ProductDetail.
+      // overflow-hidden sẵn có ở dưới clip phần ảnh phóng to không tràn ra ngoài khung.
+      <div className={cn("group flex items-center justify-center overflow-hidden bg-white p-4", className)}>
         <Image
           src={product.imageUrl!}
           alt={product.name}
@@ -40,7 +44,7 @@ export function ProductImage({ product, className, iconClassName }: ProductImage
           // Luôn bỏ qua Image Optimization: imageUrl do ADMIN nhập tay nên có thể là bất
           // kỳ domain nào — xem lý do đầy đủ ở lịch sử ProductCard.tsx.
           unoptimized
-          className="size-full object-contain"
+          className="size-full object-contain transition-transform duration-300 ease-out group-hover:scale-110"
           onError={() => setImageFailed(true)}
         />
       </div>
@@ -49,8 +53,11 @@ export function ProductImage({ product, className, iconClassName }: ProductImage
 
   const { icon: Icon, className: placeholderClassName } = CATEGORY_PLACEHOLDER[product.category] ?? DEFAULT_PLACEHOLDER;
   return (
-    <div className={cn("flex items-center justify-center overflow-hidden", placeholderClassName, className)}>
-      <Icon className={cn("size-16", iconClassName)} strokeWidth={1.5} />
+    <div className={cn("group flex items-center justify-center overflow-hidden", placeholderClassName, className)}>
+      <Icon
+        className={cn("size-16 transition-transform duration-300 ease-out group-hover:scale-110", iconClassName)}
+        strokeWidth={1.5}
+      />
     </div>
   );
 }
