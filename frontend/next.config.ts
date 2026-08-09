@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Chỉ đóng gói đúng những gì server cần chạy (server.js + node_modules tối thiểu) vào
+  // .next/standalone — image Docker runtime không cần copy nguyên node_modules đầy đủ
+  // như dev. Không ảnh hưởng `next dev`/`next start` chạy tay như trước.
+  output: "standalone",
   images: {
     // ProductCard.tsx set unoptimized trên MỌI ảnh sản phẩm (imageUrl do admin nhập tay,
     // có thể là bất kỳ domain nào — không whitelist trước hết được), nên remotePatterns

@@ -1,0 +1,60 @@
+# Dựng local giống bản production (build image thật, không phải `next dev`/`tsx watch`)
+# để test trước khi lên server — KHÔNG dùng file này để deploy thật (xem DEPLOYMENT.md:
+# production thật là Vercel + Railway, không qua Docker).
+#
+# NODE_ENV cố tình KHÔNG ép về "production" (giữ nguyên giá trị "development" trong
+# backend/.env) — authController.ts chuyển cookie refreshToken sang secure:true +
+# sameSite:"none" khi NODE_ENV=production, mà cookie secure:true bị trình duyệt CHẶN
+# hoàn toàn trên HTTP thường (localhost ở đây không có HTTPS) => login/refresh sẽ hỏng.
+# Cờ này chỉ nên bật production thật khi có HTTPS (Railway), không phải ở compose này.
+#
+# Mật khẩu MySQL bên dưới chỉ tồn tại NỘI BỘ giữa các container trong compose network
+# này, không phải secret thật — đổi thoải mái, không liên quan gì tới MySQL bạn có thể
+# đang chạy sẵn trên máy (nên cũng KHÔNG publish port MySQL ra host để tránh đụng cổng
+# 3306 nếu bạn đang có MySQL local thật đang chạy).
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: devpassword
+      MYSQL_DATABASE: techpulse
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdevpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Ghi đè DATABASE_URL trong backend/.env (đang trỏ MySQL trên máy host) để backend
+      # nối đúng tới service `mysql` bên trong network của compose thay vì localhost.
+      DATABASE_URL: mysql://root:devpassword@mysql:3306/techpulse
+    ports:
+      - "4000:4000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # NEXT_PUBLIC_* phải là URL trình duyệt gọi được (host đã publish port), không
+        # phải hostname nội bộ compose như "backend:4000" — browser không nằm trong
+        # network của compose.
+        NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
